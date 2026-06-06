@@ -319,32 +319,35 @@
 
   /* ===== 音乐按钮 ===== */
   .music-btn {
-    position: fixed; top: 20px; right: 20px; z-index: 999;
-    width: 42px; height: 42px; border-radius: 50%;
-    background: rgba(255,251,247,0.85); border: 1px solid rgba(200,160,120,0.2);
-    box-shadow: 0 2px 16px rgba(180,140,100,0.15);
-    cursor: pointer; display: flex; align-items: center; justify-content: center;
-    font-size: 1.2rem; transition: all 0.4s ease;
+    position: fixed; top: 18px; right: 18px; z-index: 999;
+    width: auto; height: 40px; border-radius: 22px;
+    padding: 0 16px 0 10px;
+    background: rgba(255,251,247,0.92); border: 1.5px solid rgba(200,160,120,0.25);
+    box-shadow: 0 2px 18px rgba(180,140,100,0.18);
+    cursor: pointer; display: flex; align-items: center; gap: 8px;
+    font-size: 0.82rem; font-weight: 600; color: var(--text-secondary);
+    transition: all 0.4s ease;
     -webkit-tap-highlight-color: transparent;
     backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+    font-family: inherit; letter-spacing: 0.03em;
   }
   .music-btn.playing {
-    background: rgba(255,251,247,0.95);
-    box-shadow: 0 0 24px rgba(220,160,100,0.30);
+    background: rgba(255,245,235,0.95);
+    border-color: rgba(232,152,94,0.45);
+    box-shadow: 0 0 28px rgba(220,150,90,0.30);
+    color: var(--accent-amber);
   }
-  .music-btn .wave-bars {
-    display: flex; align-items: flex-end; gap: 3px; height: 14px;
+  .music-btn .note-icon {
+    display: inline-block; width: 26px; height: 26px; border-radius: 50%;
+    background: linear-gradient(135deg, var(--accent-amber), var(--accent-coral));
+    color: #fff; font-size: 0.8rem; line-height: 26px; text-align: center;
   }
-  .music-btn .wave-bar {
-    width: 3px; border-radius: 2px; background: var(--accent-amber);
-    transition: height 0.3s ease;
+  .music-btn.playing .note-icon {
+    animation: notePulse 1.6s ease-in-out infinite;
   }
-  .music-btn.playing .wave-bar:nth-child(1) { animation: waveAnim 1.2s ease-in-out infinite; }
-  .music-btn.playing .wave-bar:nth-child(2) { animation: waveAnim 0.9s ease-in-out 0.2s infinite; }
-  .music-btn.playing .wave-bar:nth-child(3) { animation: waveAnim 1.4s ease-in-out 0.4s infinite; }
-  @keyframes waveAnim {
-    0%, 100% { height: 4px; }
-    50% { height: 14px; }
+  @keyframes notePulse {
+    0%, 100% { transform: scale(1); box-shadow: 0 0 6px rgba(232,152,94,0.3); }
+    50% { transform: scale(1.12); box-shadow: 0 0 16px rgba(232,152,94,0.55); }
   }
 
   /* ===== 渐显动画 ===== */
@@ -369,12 +372,9 @@
 <canvas id="fireflyCanvas"></canvas>
 
 <!-- 音乐按钮 -->
-<button class="music-btn" id="musicBtn" aria-label="播放音乐">
-  <span class="wave-bars">
-    <span class="wave-bar" style="height:5px"></span>
-    <span class="wave-bar" style="height:8px"></span>
-    <span class="wave-bar" style="height:12px"></span>
-  </span>
+<button class="music-btn" id="musicBtn" aria-label="音乐">
+  <span class="note-icon">♪</span>
+  <span id="musicLabel">轻音乐</span>
 </button>
 
 <div class="main-container">
@@ -731,119 +731,153 @@
 <script>
 (function(){
 
-  /* ========== 舒缓环境音乐引擎 ========== */
+  /* ========== 轻音乐引擎 ========== */
   let audioCtx = null;
-  let ambientNodes = [];
+  let masterGain = null;
+  let reverbGain = null;
+  let melodyTimer = null;
   let isMusicPlaying = false;
   let musicStarted = false;
   const musicBtn = document.getElementById('musicBtn');
+  const musicLabel = document.getElementById('musicLabel');
 
-  function createAmbientMusic() {
-    if (audioCtx) return;
-    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  // 创建钢琴般音色：基频 + 二泛音 + 三泛音，快速衰减
+  function playNote(freq, time, velocity) {
+    if (!audioCtx || !masterGain) return;
+    const t = time || audioCtx.currentTime;
+    const v = velocity || 0.5;
+
+    // 基频
+    const osc1 = audioCtx.createOscillator();
+    const g1 = audioCtx.createGain();
+    osc1.type = 'sine';
+    osc1.frequency.value = freq;
+    g1.gain.setValueAtTime(0, t);
+    g1.gain.linearRampToValueAtTime(v, t + 0.02);
+    g1.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
+    osc1.connect(g1); g1.connect(masterGain);
+    osc1.start(t); osc1.stop(t + 2.6);
+
+    // 八度泛音
+    const osc2 = audioCtx.createOscillator();
+    const g2 = audioCtx.createGain();
+    osc2.type = 'sine';
+    osc2.frequency.value = freq * 2;
+    g2.gain.setValueAtTime(0, t);
+    g2.gain.linearRampToValueAtTime(v * 0.5, t + 0.03);
+    g2.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
+    osc2.connect(g2); g2.connect(masterGain);
+    osc2.start(t); osc2.stop(t + 1.9);
+
+    // 五度泛音（温暖）
+    const osc3 = audioCtx.createOscillator();
+    const g3 = audioCtx.createGain();
+    osc3.type = 'sine';
+    osc3.frequency.value = freq * 1.5;
+    g3.gain.setValueAtTime(0, t);
+    g3.gain.linearRampToValueAtTime(v * 0.25, t + 0.04);
+    g3.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
+    osc3.connect(g3); g3.connect(masterGain);
+    osc3.start(t); osc3.stop(t + 1.6);
+
+    // 略微失谐增加温暖感
+    const osc4 = audioCtx.createOscillator();
+    const g4 = audioCtx.createGain();
+    osc4.type = 'sine';
+    osc4.frequency.value = freq * 1.002;
+    g4.gain.setValueAtTime(0, t);
+    g4.gain.linearRampToValueAtTime(v * 0.6, t + 0.01);
+    g4.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
+    osc4.connect(g4); g4.connect(masterGain);
+    osc4.start(t); osc4.stop(t + 2.3);
+  }
+
+  // 主旋律：温柔的 C 大调五声音阶
+  const melody = [
+    { n: 'C4', d: 1.2 }, { n: 'E4', d: 0.8 }, { n: 'G4', d: 1.0 },
+    { n: 'A4', d: 0.6 }, { n: 'G4', d: 0.8 }, { n: 'E4', d: 1.0 },
+    { n: 'D4', d: 0.9 }, { n: 'C4', d: 1.4 },
+    { n: 'E4', d: 0.7 }, { n: 'G4', d: 0.8 }, { n: 'C5', d: 1.2 },
+    { n: 'A4', d: 0.7 }, { n: 'G4', d: 1.0 }, { n: 'E4', d: 1.5 },
+    { n: 'D4', d: 0.9 }, { n: 'E4', d: 0.7 }, { n: 'G4', d: 1.0 },
+    { n: 'A4', d: 0.8 }, { n: 'C5', d: 1.3 }, { n: 'A4', d: 1.0 },
+    { n: 'G4', d: 1.2 }, { n: 'E4', d: 0.8 }, { n: 'C4', d: 2.0 },
+  ];
+  const noteMap = {
+    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'G4': 392.00,
+    'A4': 440.00, 'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'G5': 783.99,
+  };
+
+  function playMelodyLoop() {
+    if (!isMusicPlaying || !audioCtx) return;
+    let time = audioCtx.currentTime + 0.3;
+    let totalDuration = 0;
+    // 计算总时长
+    for (const m of melody) totalDuration += m.d;
+    // 播放旋律
+    for (const m of melody) {
+      const freq = noteMap[m.n] || 330;
+      const vel = 0.35 + Math.random() * 0.1;
+      playNote(freq, time, vel);
+      time += m.d;
+    }
+    // 循环
+    melodyTimer = setTimeout(playMelodyLoop, totalDuration * 1000 - 200);
+  }
+
+  // 低音垫底
+  let padNodes = [];
+  function startPad() {
+    if (!audioCtx || !masterGain) return;
     const now = audioCtx.currentTime;
-    const masterGain = audioCtx.createGain();
-    masterGain.gain.value = 0;
-    masterGain.connect(audioCtx.destination);
-
-    // 温暖的低频基底 — 类似远处的大提琴/风琴长音
-    const baseFreqs = [65.41, 82.41, 98.00, 130.81]; // C2, E2, G2, C3
-    baseFreqs.forEach((freq, i) => {
+    const padFreqs = [65.41, 82.41, 98.00, 130.81]; // C2 E2 G2 C3
+    padFreqs.forEach((freq) => {
       const osc = audioCtx.createOscillator();
       const gain = audioCtx.createGain();
       osc.type = 'sine';
       osc.frequency.value = freq;
-      gain.gain.value = 0.06;
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.08, now + 2);
       osc.connect(gain);
       gain.connect(masterGain);
       osc.start(now);
-      // 微妙频率漂移
-      const drift = audioCtx.createOscillator();
-      const driftGain = audioCtx.createGain();
-      drift.type = 'sine';
-      drift.frequency.value = 0.05 + i * 0.02;
-      driftGain.gain.value = 1.5;
-      drift.connect(driftGain);
-      driftGain.connect(osc.frequency);
-      drift.start(now);
-      ambientNodes.push(osc, gain, drift, driftGain);
+      padNodes.push(osc, gain);
     });
+  }
 
-    // 轻柔的高频泛音 — 类似风铃/星光
-    const highFreqs = [523.25, 659.25, 783.99, 1046.5]; // C5, E5, G5, C6
-    highFreqs.forEach((freq, i) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.value = 0.015;
-      osc.connect(gain);
-      gain.connect(masterGain);
-      // 高频音以缓慢脉冲出现
-      const pulseTime = 3 + i * 2.5;
-      gain.gain.setValueAtTime(0.015, now);
-      gain.gain.linearRampToValueAtTime(0.002, now + pulseTime * 0.7);
-      gain.gain.linearRampToValueAtTime(0.015, now + pulseTime);
-      setInterval(() => {
-        if (isMusicPlaying) {
-          const t = audioCtx.currentTime;
-          gain.gain.linearRampToValueAtTime(0.002, t + pulseTime * 0.6);
-          gain.gain.linearRampToValueAtTime(0.015, t + pulseTime);
-        }
-      }, pulseTime * 1000);
-      osc.start(now);
-      ambientNodes.push(osc, gain);
-    });
-
-    // 滤波噪声 — 模拟微风/暖炉白噪
-    const bufferSize = audioCtx.sampleRate * 4;
-    const noiseBuffer = audioCtx.createBuffer(1, bufferSize, audioCtx.sampleRate);
-    const data = noiseBuffer.getChannelData(0);
-    for (let i = 0; i < bufferSize; i++) { data[i] = Math.random() * 2 - 1; }
-    const noise = audioCtx.createBufferSource();
-    noise.buffer = noiseBuffer;
-    noise.loop = true;
-    const noiseFilter = audioCtx.createBiquadFilter();
-    noiseFilter.type = 'lowpass';
-    noiseFilter.frequency.value = 400;
-    noiseFilter.Q.value = 0.5;
-    const noiseGain = audioCtx.createGain();
-    noiseGain.gain.value = 0.02;
-    noise.connect(noiseFilter);
-    noiseFilter.connect(noiseGain);
-    noiseGain.connect(masterGain);
-    noise.start(now);
-    ambientNodes.push(noise, noiseGain, noiseFilter);
-
-    // 渐变到目标音量
-    masterGain.gain.setTargetAtTime(0.12, now, 3);
-    ambientNodes.push(masterGain);
-
-    return masterGain;
+  function stopPad() {
+    padNodes.forEach(n => { try { n.stop(); } catch(e) {} });
+    padNodes = [];
   }
 
   function startMusic() {
-    if (!audioCtx) createAmbientMusic();
+    if (!audioCtx) {
+      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      masterGain = audioCtx.createGain();
+      masterGain.gain.value = 0.55;
+      masterGain.connect(audioCtx.destination);
+      startPad();
+    }
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    const masterGain = ambientNodes[ambientNodes.length - 1];
-    const now = audioCtx.currentTime;
-    masterGain.gain.setTargetAtTime(0.12, now, 2);
+    masterGain.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.5);
     isMusicPlaying = true;
     musicBtn.classList.add('playing');
+    musicLabel.textContent = '暂停';
+    playMelodyLoop();
   }
 
   function stopMusic() {
-    if (!audioCtx) return;
-    const masterGain = ambientNodes[ambientNodes.length - 1];
-    const now = audioCtx.currentTime;
-    masterGain.gain.setTargetAtTime(0, now, 2);
     isMusicPlaying = false;
+    if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
+    if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
     musicBtn.classList.remove('playing');
+    musicLabel.textContent = '轻音乐';
   }
 
-  // 按钮点击切换
+  // 按钮切换
   musicBtn.addEventListener('click', (e) => {
     e.stopPropagation();
+    e.preventDefault();
     if (!musicStarted) {
       musicStarted = true;
       startMusic();
@@ -854,19 +888,17 @@
     }
   });
 
-  // 用户首次触摸/滚动页面时自动开始播放
-  function autoStartOnInteraction() {
+  // 首次交互自动播放
+  function autoStart(e) {
     if (!musicStarted) {
       musicStarted = true;
       startMusic();
     }
-    document.removeEventListener('touchstart', autoStartOnInteraction);
-    document.removeEventListener('click', autoStartOnInteraction);
-    document.removeEventListener('scroll', autoStartOnInteraction);
+    document.removeEventListener('touchstart', autoStart);
+    document.removeEventListener('click', autoStart);
   }
-  document.addEventListener('touchstart', autoStartOnInteraction, { once: false });
-  document.addEventListener('click', autoStartOnInteraction, { once: false });
-  document.addEventListener('scroll', autoStartOnInteraction, { once: false });
+  document.addEventListener('touchstart', autoStart, { once: false, passive: true });
+  document.addEventListener('click', autoStart, { once: false });
 
   /* ========== 金色暖光粒子背景 ========== */
   const canvas = document.getElementById('fireflyCanvas');
