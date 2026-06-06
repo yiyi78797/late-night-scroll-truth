@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="zh-CN">
 <head>
 <meta charset="UTF-8">
@@ -371,6 +371,9 @@
 
 <canvas id="fireflyCanvas"></canvas>
 
+<!-- 背景音乐 -->
+<audio id="bgm" src="lullaby.wav" loop preload="auto"></audio>
+
 <!-- 音乐按钮 -->
 <button class="music-btn" id="musicBtn" aria-label="音乐">
   <span class="note-icon">♪</span>
@@ -731,263 +734,43 @@
 <script>
 (function(){
 
-  /* ========== 勃拉姆斯摇篮曲 (Wiegenlied Op.49 No.4) ========== */
-  let audioCtx = null;
-  let masterGain = null;
-  let isMusicPlaying = false;
-  let musicStarted = false;
-  let allNodes = [];
-  let lullabyTimer = null;
+
+  /* ========== 背景音乐控制 ========== */
+  const bgm = document.getElementById('bgm');
   const musicBtn = document.getElementById('musicBtn');
   const musicLabel = document.getElementById('musicLabel');
+  let musicStarted = false;
 
-  // 音高映射
-  const N = {
-    'C3':130.81,'D3':146.83,'E3':164.81,'F3':174.61,'F#3':185.00,'G3':196.00,
-    'A3':220.00,'B3':246.94,
-    'C4':261.63,'D4':293.66,'E4':329.63,'F4':349.23,'F#4':369.99,'G4':392.00,
-    'A4':440.00,'B4':493.88,
-    'C5':523.25,'D5':587.33,'E5':659.25,'F5':698.46,'G5':783.99,'A5':880.00
-  };
+  bgm.volume = 0.5;
 
-  // 勃拉姆斯摇篮曲主旋律 — G major (实际原调为 Eb, 这里用温暖的 G 大调)
-  // 每对: [音名, 时长(秒)]
-  const bpm = 62; // 舒缓的摇篮曲速度
-  const mq = 60 / bpm;     // 四分音符
-  const mh = mq * 2;       // 二分音符
-  const mw = mq * 4;       // 全音符
-  const me = mq / 2;       // 八分音符
-  const mde = mq * 3/4;    // 附点八分
-
-  // 忠实还原勃拉姆斯摇篮曲
-  const melody = [
-    // 第一句 "Guten Abend, gut' Nacht"
-    ['G4', mq], ['G4', mq], ['E4', mh],
-    ['G4', mq], ['G4', mq], ['E4', mh],
-    // "Mit Rosen bedacht"
-    ['G4', mq], ['C5', mde], ['B4', me], ['A4', mq], ['G4', mq],
-    ['A4', mq], ['G4', mq], ['F#4', mh+mq],
-    // "Mit Näglein besteckt"
-    ['E4', mq], ['D4', mq], ['C4', mh],
-    ['D4', mq], ['E4', mq], ['F4', mq], ['E4', mq],
-    ['D4', mh+mq], ['G3', mq],
-    // "Schlupf unter die Deck'"
-    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
-    ['G4', mh], ['A4', mq], ['F4', mq],
-    ['E4', mq], ['D4', mq], ['C4', mh+mq],
-    // "Morgen früh, wenn Gott will"
-    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
-    ['E4', mh], ['D4', mq], ['C4', mq],
-    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
-    ['E4', mh], ['D4', mq], ['C4', mq],
-    // "Wirst du wieder geweckt"
-    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
-    ['G4', mh], ['A4', mq], ['F4', mq],
-    ['E4', mq], ['D4', mq], ['C4', mw],
-    // 间奏
-    ['G3', mh], ['C4', mh],
-    // 第二遍
-    ['G4', mq], ['G4', mq], ['E4', mh],
-    ['G4', mq], ['G4', mq], ['E4', mh],
-    ['G4', mq], ['C5', mde], ['B4', me], ['A4', mq], ['G4', mq],
-    ['A4', mq], ['G4', mq], ['F#4', mh+mq],
-    ['E4', mq], ['D4', mq], ['C4', mh],
-    ['D4', mq], ['E4', mq], ['F4', mq], ['E4', mq],
-    ['D4', mh+mq], ['G3', mq],
-    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
-    ['G4', mh], ['A4', mq], ['F4', mq],
-    ['E4', mq], ['D4', mq], ['C4', mh+mq],
-    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
-    ['E4', mh], ['D4', mq], ['C4', mq],
-    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
-    ['E4', mh], ['D4', mq], ['C4', mq],
-    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
-    ['G4', mh], ['A4', mq], ['F4', mq],
-    ['E4', mq], ['D4', mq], ['C4', mw],
-    ['C4', mw+mq],
-  ];
-
-  // 和弦垫 — 使用绝对时长数值，避免变量冲突
-  const chordPad = [
-    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
-    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
-    { notes: ['G2','B3','D4','G4'], dur: 3.87 },
-    { notes: ['G2','B3','D4','G4'], dur: 4.84 },
-    { notes: ['C3','E3','G3','C4'], dur: 3.87 },
-    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
-    { notes: ['G2','B3','D4','F4'], dur: 2.90 },
-    { notes: ['D3','F#3','A3','C4'], dur: 2.90 },
-    { notes: ['G2','B3','D4','G4'], dur: 5.81 },
-    { notes: ['C3','E3','G3','C4'], dur: 3.87 },
-    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
-    { notes: ['F2','A3','C4','F4'], dur: 4.84 },
-    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
-    { notes: ['G2','B3','D4','G4'], dur: 5.81 },
-    { notes: ['C3','E3','G3','C4'], dur: 7.74 },
-  ];
-
-  // 演奏一个温暖的音符（类似柔和的八音盒/钢片琴）
-  function playChime(freq, time, velocity, duration) {
-    if (!audioCtx || !masterGain || !isMusicPlaying) return;
-    const t = time || audioCtx.currentTime;
-    const v = velocity || 0.4;
-    const dur = Math.min(duration || 0.8, 3.0);
-
-    // 用三角波做基频 — 比正弦温暖但比锯齿柔和
-    const osc1 = audioCtx.createOscillator();
-    const g1 = audioCtx.createGain();
-    osc1.type = 'triangle';
-    osc1.frequency.value = freq;
-    g1.gain.setValueAtTime(0, t);
-    g1.gain.linearRampToValueAtTime(v * 0.7, t + 0.04);
-    g1.gain.exponentialRampToValueAtTime(0.001, t + dur);
-    osc1.connect(g1); g1.connect(masterGain);
-    osc1.start(t); osc1.stop(t + dur + 0.1);
-    allNodes.push(osc1, g1);
-
-    // 高八度泛音 — 八音盒的清脆感
-    const osc2 = audioCtx.createOscillator();
-    const g2 = audioCtx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.value = freq * 2;
-    g2.gain.setValueAtTime(0, t);
-    g2.gain.linearRampToValueAtTime(v * 0.35, t + 0.02);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.7);
-    osc2.connect(g2); g2.connect(masterGain);
-    osc2.start(t); osc2.stop(t + dur * 0.7 + 0.1);
-    allNodes.push(osc2, g2);
-
-    // 第二个八度 — 空气感
-    const osc3 = audioCtx.createOscillator();
-    const g3 = audioCtx.createGain();
-    osc3.type = 'sine';
-    osc3.frequency.value = freq * 4;
-    g3.gain.setValueAtTime(0, t);
-    g3.gain.linearRampToValueAtTime(v * 0.10, t + 0.05);
-    g3.gain.exponentialRampToValueAtTime(0.001, t + dur * 0.5);
-    osc3.connect(g3); g3.connect(masterGain);
-    osc3.start(t); osc3.stop(t + dur * 0.5 + 0.1);
-    allNodes.push(osc3, g3);
+  function playMusic() {
+    bgm.play().then(() => {
+      musicBtn.classList.add('playing');
+      musicLabel.textContent = '暂停';
+    }).catch(() => {});
+    musicStarted = true;
   }
 
-  function playChordPad() {
-    if (!isMusicPlaying || !audioCtx) return;
-    const now = audioCtx.currentTime;
-    let timeOffset = 0;
-
-    chordPad.forEach(chord => {
-      const startTime = now + timeOffset;
-      chord.notes.forEach(noteName => {
-        const freq = N[noteName];
-        if (freq) {
-          // 低频垫音用更柔和的音色
-          const osc = audioCtx.createOscillator();
-          const g = audioCtx.createGain();
-          osc.type = 'sine';
-          osc.frequency.value = freq;
-          g.gain.setValueAtTime(0, startTime);
-          g.gain.linearRampToValueAtTime(0.04, startTime + 0.8);
-          g.gain.setValueAtTime(0.04, startTime + chord.dur - 0.5);
-          g.gain.exponentialRampToValueAtTime(0.001, startTime + chord.dur);
-          osc.connect(g); g.connect(masterGain);
-          osc.start(startTime);
-          osc.stop(startTime + chord.dur + 0.2);
-          allNodes.push(osc, g);
-        }
-      });
-      timeOffset += chord.dur;
-    });
-
-    // 循环和弦垫
-    const totalPadDuration = chordPad.reduce((s, c) => s + c.dur, 0) * 1000;
-    setTimeout(() => { if (isMusicPlaying) playChordPad(); }, totalPadDuration - 500);
-  }
-
-  function playMelodyLoop() {
-    if (!isMusicPlaying || !audioCtx) return;
-    const now = audioCtx.currentTime;
-    let time = now + 0.5;
-    let totalDuration = 0;
-
-    melody.forEach(([noteName, dur]) => {
-      const freq = N[noteName];
-      if (freq) {
-        const velocity = 0.30 + Math.random() * 0.06;
-        playChime(freq, time, velocity, dur);
-      }
-      time += dur;
-      totalDuration += dur;
-    });
-
-    // 循环
-    lullabyTimer = setTimeout(playMelodyLoop, totalDuration * 1000 + 1500);
-  }
-
-  // 低音 C — 极轻柔的基底
-  function createSubBass() {
-    if (!audioCtx || !masterGain) return;
-    const osc = audioCtx.createOscillator();
-    const g = audioCtx.createGain();
-    osc.type = 'sine';
-    osc.frequency.value = 65.41;
-    g.gain.value = 0.06;
-    osc.connect(g); g.connect(masterGain);
-    osc.start();
-    allNodes.push(osc, g);
-  }
-
-  function startMusic() {
-    if (!audioCtx) {
-      audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-      masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0;
-      masterGain.connect(audioCtx.destination);
-    }
-    if (audioCtx.state === 'suspended') audioCtx.resume();
-
-    const now = audioCtx.currentTime;
-    masterGain.gain.setValueAtTime(0.001, now);
-    masterGain.gain.linearRampToValueAtTime(0.48, now + 2.0);
-
-    createSubBass();
-    playChordPad();
-    playMelodyLoop();
-
-    isMusicPlaying = true;
-    musicBtn.classList.add('playing');
-    musicLabel.textContent = '暂停';
-  }
-
-  function stopMusic() {
-    isMusicPlaying = false;
-    if (lullabyTimer) { clearTimeout(lullabyTimer); lullabyTimer = null; }
-    if (masterGain) {
-      const now = audioCtx.currentTime;
-      masterGain.gain.linearRampToValueAtTime(0.001, now + 1.5);
-    }
-    setTimeout(() => {
-      allNodes.forEach(n => { try { n.stop(); } catch(e) {} });
-      allNodes = [];
-    }, 2000);
+  function pauseMusic() {
+    bgm.pause();
     musicBtn.classList.remove('playing');
     musicLabel.textContent = '轻音乐';
   }
 
   musicBtn.addEventListener('click', (e) => {
     e.stopPropagation(); e.preventDefault();
-    if (!musicStarted) { musicStarted = true; startMusic(); }
-    else if (isMusicPlaying) { stopMusic(); }
-    else { startMusic(); }
+    if (!musicStarted) { playMusic(); }
+    else if (!bgm.paused) { pauseMusic(); }
+    else { playMusic(); }
   });
 
   function autoStart(e) {
-    if (!musicStarted) { musicStarted = true; startMusic(); }
+    if (!musicStarted) { playMusic(); }
     document.removeEventListener('touchstart', autoStart);
     document.removeEventListener('click', autoStart);
   }
   document.addEventListener('touchstart', autoStart, { once: false, passive: true });
   document.addEventListener('click', autoStart, { once: false });
-
   /* ========== 金色暖光粒子背景 ========== */
   const canvas = document.getElementById('fireflyCanvas');
   const ctx = canvas.getContext('2d');
