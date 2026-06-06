@@ -753,94 +753,77 @@
   // 勃拉姆斯摇篮曲主旋律 — G major (实际原调为 Eb, 这里用温暖的 G 大调)
   // 每对: [音名, 时长(秒)]
   const bpm = 62; // 舒缓的摇篮曲速度
-  const q = 60 / bpm;     // 四分音符 ≈ 0.97s
-  const h = q * 2;        // 二分音符
-  const w = q * 4;        // 全音符
-  const e = q / 2;        // 八分音符
-  const de = q * 3/4;     // 附点八分
+  const mq = 60 / bpm;     // 四分音符
+  const mh = mq * 2;       // 二分音符
+  const mw = mq * 4;       // 全音符
+  const me = mq / 2;       // 八分音符
+  const mde = mq * 3/4;    // 附点八分
 
-  // 忠实还原勃拉姆斯摇篮曲第一段 + 重复
+  // 忠实还原勃拉姆斯摇篮曲
   const melody = [
     // 第一句 "Guten Abend, gut' Nacht"
-    ['G4', q], ['G4', q], ['E4', h],
-    ['G4', q], ['G4', q], ['E4', h],
-
+    ['G4', mq], ['G4', mq], ['E4', mh],
+    ['G4', mq], ['G4', mq], ['E4', mh],
     // "Mit Rosen bedacht"
-    ['G4', q], ['C5', de], ['B4', e], ['A4', q], ['G4', q],
-    ['A4', q], ['G4', q], ['F#4', h+q],
-
+    ['G4', mq], ['C5', mde], ['B4', me], ['A4', mq], ['G4', mq],
+    ['A4', mq], ['G4', mq], ['F#4', mh+mq],
     // "Mit Näglein besteckt"
-    ['E4', q], ['D4', q], ['C4', h],
-    ['D4', q], ['E4', q], ['F4', q], ['E4', q],
-    ['D4', h+q], ['G3', q],
-
+    ['E4', mq], ['D4', mq], ['C4', mh],
+    ['D4', mq], ['E4', mq], ['F4', mq], ['E4', mq],
+    ['D4', mh+mq], ['G3', mq],
     // "Schlupf unter die Deck'"
-    ['C4', q], ['D4', q], ['E4', q], ['F4', q],
-    ['G4', h], ['A4', q], ['F4', q],
-    ['E4', q], ['D4', q], ['C4', h+q],
-
+    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
+    ['G4', mh], ['A4', mq], ['F4', mq],
+    ['E4', mq], ['D4', mq], ['C4', mh+mq],
     // "Morgen früh, wenn Gott will"
-    ['D4', q], ['D4', q], ['G4', q], ['F4', q],
-    ['E4', h], ['D4', q], ['C4', q],
-    ['D4', q], ['D4', q], ['G4', q], ['F4', q],
-    ['E4', h], ['D4', q], ['C4', q],
-
+    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
+    ['E4', mh], ['D4', mq], ['C4', mq],
+    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
+    ['E4', mh], ['D4', mq], ['C4', mq],
     // "Wirst du wieder geweckt"
-    ['C4', q], ['D4', q], ['E4', q], ['F4', q],
-    ['G4', h], ['A4', q], ['F4', q],
-    ['E4', q], ['D4', q], ['C4', w],
-
-    // 间奏（柔和的过渡）
-    ['G3', h], ['C4', h],
-
-    // 第二遍（稍加变化，更轻柔）
-    ['G4', q], ['G4', q], ['E4', h],
-    ['G4', q], ['G4', q], ['E4', h],
-    ['G4', q], ['C5', de], ['B4', e], ['A4', q], ['G4', q],
-    ['A4', q], ['G4', q], ['F#4', h+q],
-    ['E4', q], ['D4', q], ['C4', h],
-    ['D4', q], ['E4', q], ['F4', q], ['E4', q],
-    ['D4', h+q], ['G3', q],
-    ['C4', q], ['D4', q], ['E4', q], ['F4', q],
-    ['G4', h], ['A4', q], ['F4', q],
-    ['E4', q], ['D4', q], ['C4', h+q],
-    ['D4', q], ['D4', q], ['G4', q], ['F4', q],
-    ['E4', h], ['D4', q], ['C4', q],
-    ['D4', q], ['D4', q], ['G4', q], ['F4', q],
-    ['E4', h], ['D4', q], ['C4', q],
-    ['C4', q], ['D4', q], ['E4', q], ['F4', q],
-    ['G4', h], ['A4', q], ['F4', q],
-    ['E4', q], ['D4', q], ['C4', w],
-    ['C4', w+q], // 结尾延长
+    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
+    ['G4', mh], ['A4', mq], ['F4', mq],
+    ['E4', mq], ['D4', mq], ['C4', mw],
+    // 间奏
+    ['G3', mh], ['C4', mh],
+    // 第二遍
+    ['G4', mq], ['G4', mq], ['E4', mh],
+    ['G4', mq], ['G4', mq], ['E4', mh],
+    ['G4', mq], ['C5', mde], ['B4', me], ['A4', mq], ['G4', mq],
+    ['A4', mq], ['G4', mq], ['F#4', mh+mq],
+    ['E4', mq], ['D4', mq], ['C4', mh],
+    ['D4', mq], ['E4', mq], ['F4', mq], ['E4', mq],
+    ['D4', mh+mq], ['G3', mq],
+    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
+    ['G4', mh], ['A4', mq], ['F4', mq],
+    ['E4', mq], ['D4', mq], ['C4', mh+mq],
+    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
+    ['E4', mh], ['D4', mq], ['C4', mq],
+    ['D4', mq], ['D4', mq], ['G4', mq], ['F4', mq],
+    ['E4', mh], ['D4', mq], ['C4', mq],
+    ['C4', mq], ['D4', mq], ['E4', mq], ['F4', mq],
+    ['G4', mh], ['A4', mq], ['F4', mq],
+    ['E4', mq], ['D4', mq], ['C4', mw],
+    ['C4', mw+mq],
   ];
 
-  // 柔和的和弦垫（为旋律提供和声背景）
+  // 和弦垫 — 使用绝对时长数值，避免变量冲突
   const chordPad = [
-    // C major
-    { notes: ['C3','E3','G3','C4'], dur: w + h },
-    { notes: ['C3','E3','G3','C4'], dur: w + h },
-    // G major
-    { notes: ['G2','B3','D4','G4'], dur: w },
-    { notes: ['G2','B3','D4','G4'], dur: w + h },
-    // C major
-    { notes: ['C3','E3','G3','C4'], dur: w },
-    { notes: ['C3','E3','G3','C4'], dur: w + h },
-    // G major → D7
-    { notes: ['G2','B3','D4','F4'], dur: h + q },
-    { notes: ['D3','F#3','A3','C4'], dur: h + q },
-    // G major
-    { notes: ['G2','B3','D4','G4'], dur: w + h + q },
-    // C major
-    { notes: ['C3','E3','G3','C4'], dur: w },
-    { notes: ['C3','E3','G3','C4'], dur: w + h },
-    // F major
-    { notes: ['F2','A3','C4','F4'], dur: w + h },
-    // C major
-    { notes: ['C3','E3','G3','C4'], dur: w + h },
-    // G major
-    { notes: ['G2','B3','D4','G4'], dur: w + h + q },
-    // C major (结尾)
-    { notes: ['C3','E3','G3','C4'], dur: w * 2 },
+    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
+    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
+    { notes: ['G2','B3','D4','G4'], dur: 3.87 },
+    { notes: ['G2','B3','D4','G4'], dur: 4.84 },
+    { notes: ['C3','E3','G3','C4'], dur: 3.87 },
+    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
+    { notes: ['G2','B3','D4','F4'], dur: 2.90 },
+    { notes: ['D3','F#3','A3','C4'], dur: 2.90 },
+    { notes: ['G2','B3','D4','G4'], dur: 5.81 },
+    { notes: ['C3','E3','G3','C4'], dur: 3.87 },
+    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
+    { notes: ['F2','A3','C4','F4'], dur: 4.84 },
+    { notes: ['C3','E3','G3','C4'], dur: 4.84 },
+    { notes: ['G2','B3','D4','G4'], dur: 5.81 },
+    { notes: ['C3','E3','G3','C4'], dur: 7.74 },
   ];
 
   // 演奏一个温暖的音符（类似柔和的八音盒/钢片琴）
