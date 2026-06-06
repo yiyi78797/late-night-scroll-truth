@@ -731,145 +731,168 @@
 <script>
 (function(){
 
-  /* ========== 轻音乐引擎 ========== */
+  /* ========== 轻音乐引擎（暖氛围 / 无旋律 / Spa冥想风） ========== */
   let audioCtx = null;
   let masterGain = null;
-  let reverbGain = null;
-  let melodyTimer = null;
   let isMusicPlaying = false;
   let musicStarted = false;
+  let allNodes = [];
   const musicBtn = document.getElementById('musicBtn');
   const musicLabel = document.getElementById('musicLabel');
 
-  // 创建钢琴般音色：基频 + 二泛音 + 三泛音，快速衰减
-  function playNote(freq, time, velocity) {
+  // 创建一个丰富的和弦垫音
+  function createRichPad(freqs, gainVal, detuneAmt, waveType) {
     if (!audioCtx || !masterGain) return;
-    const t = time || audioCtx.currentTime;
-    const v = velocity || 0.5;
-
-    // 基频
-    const osc1 = audioCtx.createOscillator();
-    const g1 = audioCtx.createGain();
-    osc1.type = 'sine';
-    osc1.frequency.value = freq;
-    g1.gain.setValueAtTime(0, t);
-    g1.gain.linearRampToValueAtTime(v, t + 0.02);
-    g1.gain.exponentialRampToValueAtTime(0.001, t + 2.5);
-    osc1.connect(g1); g1.connect(masterGain);
-    osc1.start(t); osc1.stop(t + 2.6);
-
-    // 八度泛音
-    const osc2 = audioCtx.createOscillator();
-    const g2 = audioCtx.createGain();
-    osc2.type = 'sine';
-    osc2.frequency.value = freq * 2;
-    g2.gain.setValueAtTime(0, t);
-    g2.gain.linearRampToValueAtTime(v * 0.5, t + 0.03);
-    g2.gain.exponentialRampToValueAtTime(0.001, t + 1.8);
-    osc2.connect(g2); g2.connect(masterGain);
-    osc2.start(t); osc2.stop(t + 1.9);
-
-    // 五度泛音（温暖）
-    const osc3 = audioCtx.createOscillator();
-    const g3 = audioCtx.createGain();
-    osc3.type = 'sine';
-    osc3.frequency.value = freq * 1.5;
-    g3.gain.setValueAtTime(0, t);
-    g3.gain.linearRampToValueAtTime(v * 0.25, t + 0.04);
-    g3.gain.exponentialRampToValueAtTime(0.001, t + 1.5);
-    osc3.connect(g3); g3.connect(masterGain);
-    osc3.start(t); osc3.stop(t + 1.6);
-
-    // 略微失谐增加温暖感
-    const osc4 = audioCtx.createOscillator();
-    const g4 = audioCtx.createGain();
-    osc4.type = 'sine';
-    osc4.frequency.value = freq * 1.002;
-    g4.gain.setValueAtTime(0, t);
-    g4.gain.linearRampToValueAtTime(v * 0.6, t + 0.01);
-    g4.gain.exponentialRampToValueAtTime(0.001, t + 2.2);
-    osc4.connect(g4); g4.connect(masterGain);
-    osc4.start(t); osc4.stop(t + 2.3);
-  }
-
-  // 主旋律：温柔的 C 大调五声音阶
-  const melody = [
-    { n: 'C4', d: 1.2 }, { n: 'E4', d: 0.8 }, { n: 'G4', d: 1.0 },
-    { n: 'A4', d: 0.6 }, { n: 'G4', d: 0.8 }, { n: 'E4', d: 1.0 },
-    { n: 'D4', d: 0.9 }, { n: 'C4', d: 1.4 },
-    { n: 'E4', d: 0.7 }, { n: 'G4', d: 0.8 }, { n: 'C5', d: 1.2 },
-    { n: 'A4', d: 0.7 }, { n: 'G4', d: 1.0 }, { n: 'E4', d: 1.5 },
-    { n: 'D4', d: 0.9 }, { n: 'E4', d: 0.7 }, { n: 'G4', d: 1.0 },
-    { n: 'A4', d: 0.8 }, { n: 'C5', d: 1.3 }, { n: 'A4', d: 1.0 },
-    { n: 'G4', d: 1.2 }, { n: 'E4', d: 0.8 }, { n: 'C4', d: 2.0 },
-  ];
-  const noteMap = {
-    'C4': 261.63, 'D4': 293.66, 'E4': 329.63, 'G4': 392.00,
-    'A4': 440.00, 'C5': 523.25, 'D5': 587.33, 'E5': 659.25, 'G5': 783.99,
-  };
-
-  function playMelodyLoop() {
-    if (!isMusicPlaying || !audioCtx) return;
-    let time = audioCtx.currentTime + 0.3;
-    let totalDuration = 0;
-    // 计算总时长
-    for (const m of melody) totalDuration += m.d;
-    // 播放旋律
-    for (const m of melody) {
-      const freq = noteMap[m.n] || 330;
-      const vel = 0.35 + Math.random() * 0.1;
-      playNote(freq, time, vel);
-      time += m.d;
-    }
-    // 循环
-    melodyTimer = setTimeout(playMelodyLoop, totalDuration * 1000 - 200);
-  }
-
-  // 低音垫底
-  let padNodes = [];
-  function startPad() {
-    if (!audioCtx || !masterGain) return;
-    const now = audioCtx.currentTime;
-    const padFreqs = [65.41, 82.41, 98.00, 130.81]; // C2 E2 G2 C3
-    padFreqs.forEach((freq) => {
-      const osc = audioCtx.createOscillator();
-      const gain = audioCtx.createGain();
-      osc.type = 'sine';
-      osc.frequency.value = freq;
-      gain.gain.setValueAtTime(0, now);
-      gain.gain.linearRampToValueAtTime(0.08, now + 2);
-      osc.connect(gain);
-      gain.connect(masterGain);
-      osc.start(now);
-      padNodes.push(osc, gain);
+    freqs.forEach(baseFreq => {
+      // 左右声道各一个略微失谐的振荡器 → 宽广的立体声合唱效果
+      [1, -1].forEach(panSide => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        osc.type = waveType || 'triangle';
+        osc.frequency.value = baseFreq + (Math.random() - 0.5) * detuneAmt;
+        g.gain.value = gainVal / freqs.length / 2;
+        panner.pan.value = panSide * 0.6;
+        osc.connect(g);
+        g.connect(panner);
+        panner.connect(masterGain);
+        osc.start();
+        allNodes.push(osc, g, panner);
+      });
     });
   }
 
-  function stopPad() {
-    padNodes.forEach(n => { try { n.stop(); } catch(e) {} });
-    padNodes = [];
+  // 主和弦进行：温暖的大七/加九和弦（极其缓慢地渐变）
+  const chordProgression = [
+    { freqs: [130.81, 164.81, 196.00, 246.94, 329.63], label: 'C maj9' },   // C E G B D
+    { freqs: [110.00, 164.81, 220.00, 261.63, 329.63], label: 'A m7 add11' }, // A C E G D
+    { freqs: [174.61, 220.00, 261.63, 329.63, 349.23], label: 'F maj9' },   // F A C E G
+    { freqs: [196.00, 246.94, 293.66, 369.99, 392.00], label: 'G maj9' },   // G B D F# A
+  ];
+
+  let currentChordIndex = 0;
+  let chordGains = [];
+  let chordTimer = null;
+
+  function fadeToChord(index) {
+    if (!isMusicPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const chord = chordProgression[index];
+    const newGains = [];
+
+    // 创建新和弦的振荡器
+    chord.freqs.forEach(baseFreq => {
+      [-1, 1].forEach(panSide => {
+        const osc = audioCtx.createOscillator();
+        const g = audioCtx.createGain();
+        const panner = audioCtx.createStereoPanner();
+        osc.type = 'triangle';
+        osc.frequency.value = baseFreq + (Math.random() - 0.5) * 0.25;
+        g.gain.setValueAtTime(0, now);
+        g.gain.linearRampToValueAtTime(0.055, now + 3);
+        panner.pan.value = panSide * 0.5;
+        osc.connect(g);
+        g.connect(panner);
+        panner.connect(masterGain);
+        osc.start(now);
+        newGains.push(g);
+        allNodes.push(osc, g, panner);
+      });
+    });
+
+    // 旧和弦淡出
+    chordGains.forEach(g => {
+      try { g.gain.linearRampToValueAtTime(0.001, now + 4); } catch(e) {}
+    });
+
+    chordGains = newGains;
+    currentChordIndex = index;
+
+    // 12-18 秒后切到下一个和弦（慢到几乎感觉不到变化）
+    const duration = 12000 + Math.random() * 6000;
+    const next = (index + 1) % chordProgression.length;
+    chordTimer = setTimeout(() => fadeToChord(next), duration);
+  }
+
+  // 晶莹的高音星点（偶尔轻轻闪烁）
+  function createSparkles() {
+    if (!isMusicPlaying || !audioCtx) return;
+    const now = audioCtx.currentTime;
+    const highFreqs = [523.25, 587.33, 659.25, 783.99, 880.00, 1046.5];
+    const freq = highFreqs[Math.floor(Math.random() * highFreqs.length)];
+
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    const panner = audioCtx.createStereoPanner();
+    osc.type = 'sine';
+    osc.frequency.value = freq;
+    g.gain.setValueAtTime(0, now);
+    g.gain.linearRampToValueAtTime(0.03, now + 0.3);
+    g.gain.exponentialRampToValueAtTime(0.001, now + 2.5);
+    panner.pan.value = (Math.random() - 0.5) * 1.4;
+    osc.connect(g);
+    g.connect(panner);
+    panner.connect(masterGain);
+    osc.start(now);
+    osc.stop(now + 2.8);
+    allNodes.push(osc, g, panner);
+
+    // 随机间隔后再来一颗星
+    const nextDelay = 2500 + Math.random() * 5000;
+    setTimeout(() => { if (isMusicPlaying) createSparkles(); }, nextDelay);
+  }
+
+  // 极低频的暖底（几乎感觉不到，但抽掉会觉得空）
+  function createSubBass() {
+    if (!audioCtx || !masterGain) return;
+    const osc = audioCtx.createOscillator();
+    const g = audioCtx.createGain();
+    osc.type = 'sine';
+    osc.frequency.value = 65.41; // C2
+    g.gain.value = 0.07;
+    osc.connect(g);
+    g.connect(masterGain);
+    osc.start();
+    allNodes.push(osc, g);
   }
 
   function startMusic() {
     if (!audioCtx) {
       audioCtx = new (window.AudioContext || window.webkitAudioContext)();
       masterGain = audioCtx.createGain();
-      masterGain.gain.value = 0.55;
+      masterGain.gain.value = 0;
       masterGain.connect(audioCtx.destination);
-      startPad();
     }
     if (audioCtx.state === 'suspended') audioCtx.resume();
-    masterGain.gain.setTargetAtTime(0.55, audioCtx.currentTime, 0.5);
+
+    // 让音量从 0 丝滑升到目标值
+    const now = audioCtx.currentTime;
+    masterGain.gain.setValueAtTime(masterGain.gain.value || 0.001, now);
+    masterGain.gain.linearRampToValueAtTime(0.5, now + 2.5);
+
+    // 启动所有层
+    createSubBass();
+    fadeToChord(0);
+    createSparkles();
+
     isMusicPlaying = true;
     musicBtn.classList.add('playing');
     musicLabel.textContent = '暂停';
-    playMelodyLoop();
   }
 
   function stopMusic() {
     isMusicPlaying = false;
-    if (melodyTimer) { clearTimeout(melodyTimer); melodyTimer = null; }
-    if (masterGain) masterGain.gain.setTargetAtTime(0, audioCtx.currentTime, 0.3);
+    if (chordTimer) { clearTimeout(chordTimer); chordTimer = null; }
+    if (masterGain) {
+      const now = audioCtx.currentTime;
+      masterGain.gain.linearRampToValueAtTime(0.001, now + 2);
+    }
+    // 清理节点
+    setTimeout(() => {
+      allNodes.forEach(n => { try { n.stop(); } catch(e) {} });
+      allNodes = [];
+      chordGains = [];
+    }, 2500);
     musicBtn.classList.remove('playing');
     musicLabel.textContent = '轻音乐';
   }
